@@ -1,5 +1,7 @@
 checkpoint/
-data/
+data/*
+!data/figs/
+!data/download.sh
 cifar-10-*
 .idea/
 *.tar
