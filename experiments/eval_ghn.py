@@ -72,7 +72,7 @@ for graphs in graphs_queue:
                         is_imagenet_input=is_imagenet,
                         **net_args).eval()
     print('\nEvaluation of arch={} with {} parameters'.format(net_idx, capacity(model)[1]))
-
+    
     ghn(model, graphs.to_device(ghn_device))  # predict all the parameters
 
     for test_batch_size in np.round(np.geomspace(args.test_batch_size, 2, int(np.log2(args.test_batch_size))), 1):
