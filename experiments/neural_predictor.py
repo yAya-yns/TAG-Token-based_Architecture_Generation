@@ -13,13 +13,9 @@ import logging
 import random
 import sys
 from collections import OrderedDict
-# from architectures_loader import ArchitectureLoader
-# from darts.cnn.genotypes import PRIMITIVES, PRIMITIVES_GHN
-from ppuda.deepnets1m.loader import DeepNets1M
-from ppuda.deepnets1m.genotypes import PRIMITIVES_DEEPNETS1M
+from architectures_loader import ArchitectureLoader
+from darts.cnn.genotypes import PRIMITIVES, PRIMITIVES_GHN
 
-print("im here")
-xxx
 
 def normalize_adj(adj):
     # Row-normalize matrix
@@ -64,8 +60,7 @@ class DirectedGraphConvolution(nn.Module):
 
 
 class NeuralPredictor(nn.Module):
-    # def __init__(self, initial_hidden=len(PRIMITIVES_GHN) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
-    def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
+    def __init__(self, initial_hidden=len(PRIMITIVES_GHN) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
         super().__init__()
         self.gcn = [DirectedGraphConvolution(initial_hidden if i == 0 else gcn_hidden, gcn_hidden)
                     for i in range(gcn_layers)]
@@ -100,7 +95,6 @@ class Nb101Dataset(Dataset):
             ood=None,
             root='/scratch/ssd/data/',
             verbose=False)
-        
         self.archs_dataset.prepare_batches()
         with open('c10_results.json', 'r') as f:
             ALL_RESULTS_C10 = json.load(f)
@@ -140,13 +134,11 @@ class Nb101Dataset(Dataset):
         index = self.sample_range[index]
         data = self.archs_dataset[index]
         N = data[0].shape[0]
-        # ops_onehot = np.zeros((self.max_nodes, len(PRIMITIVES_GHN)+2))
-        ops_onehot = np.zeros((self.max_nodes, len(PRIMITIVES_DEEPNETS1M)+2))
+        ops_onehot = np.zeros((self.max_nodes, len(PRIMITIVES_GHN)+2))
         i = 0
         for nodes in data[1]:
             for n in nodes:
-                # ops_onehot[i, PRIMITIVES_GHN[n[0]]] = 1
-                ops_onehot[i, PRIMITIVES_DEEPNETS1M[n[0]]] = 1
+                ops_onehot[i, PRIMITIVES_GHN[n[0]]] = 1
                 i += 1
         assert i == N, (i, N)
 
@@ -286,18 +278,10 @@ def main():
 
     reset_seed(args.seed)
 
-    '''
     dataset = Nb101Dataset(split='train')
     dataset_test = Nb101Dataset(split='val')
     data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, drop_last=True)
     test_data_loader = DataLoader(dataset_test, batch_size=args.eval_batch_size)
-    '''
-    
-    # replacing DeepNets1m dataset
-    
-    
-    
-    
     net = NeuralPredictor(gcn_hidden=args.gcn_hidden)
     net.cuda()
     criterion = nn.MSELoss()
