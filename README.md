@@ -1,3 +1,5 @@
+[Project Proposal](https://www.overleaf.com/read/kyzwskkjphxr)
+
 This is a continuing work from the original [PPUDA](https://github.com/facebookresearch/ppuda)
 
 <hr /> 
