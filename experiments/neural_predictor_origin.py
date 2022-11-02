@@ -13,14 +13,9 @@ import logging
 import random
 import sys
 from collections import OrderedDict
-# from architectures_loader import ArchitectureLoader
-# from darts.cnn.genotypes import PRIMITIVES, PRIMITIVES_GHN
-from ppuda.deepnets1m.loader import DeepNets1M
-from ppuda.deepnets1m.net import Network
-from ppuda.deepnets1m.genotypes import PRIMITIVES_DEEPNETS1M
-import torch.multiprocessing
-from tqdm import tqdm
-torch.multiprocessing.set_sharing_strategy('file_system')
+from architectures_loader import ArchitectureLoader
+from darts.cnn.genotypes import PRIMITIVES, PRIMITIVES_GHN
+
 
 def normalize_adj(adj):
     # Row-normalize matrix
@@ -50,13 +45,8 @@ class DirectedGraphConvolution(nn.Module):
 
     def forward(self, inputs, adj):
         norm_adj = normalize_adj(adj)
-        
-        # print("norm_adj.shape, inputs.shape, self.weight1 = ", norm_adj.shape, inputs.shape, self.weight1.shape)
-        # >>> torch.Size([10, 600, 600]) torch.Size([10, 600, 15]) torch.Size([17, 144])
-        
+        # print(adj.shape, inputs.shape)
         output1 = F.relu(torch.matmul(norm_adj, torch.matmul(inputs, self.weight1)))
-        
-        
         inv_norm_adj = normalize_adj(adj.transpose(1, 2))
         output2 = F.relu(torch.matmul(inv_norm_adj, torch.matmul(inputs, self.weight2)))
         out = (output1 + output2) / 2
@@ -70,8 +60,7 @@ class DirectedGraphConvolution(nn.Module):
 
 
 class NeuralPredictor(nn.Module):
-    # def __init__(self, initial_hidden=len(PRIMITIVES_GHN) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
-    def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), gcn_hidden=144, gcn_layers=3, linear_hidden=128):
+    def __init__(self, initial_hidden=len(PRIMITIVES_GHN) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
         super().__init__()
         self.gcn = [DirectedGraphConvolution(initial_hidden if i == 0 else gcn_hidden, gcn_hidden)
                     for i in range(gcn_layers)]
@@ -85,109 +74,13 @@ class NeuralPredictor(nn.Module):
         gs = adj.size(1)  # graph node number
         adj_with_diag = normalize_adj(adj + torch.eye(gs, device=adj.device))  # assuming diagonal is not 1
         for layer in self.gcn:
-            out = layer(out, adj_with_diag)  # passes into the forward of DirectedGraphConvolution
+            out = layer(out, adj_with_diag)
         out = graph_pooling(out, numv)
         out = self.fc1(out)
         out = self.dropout(out)
         out = self.fc2(out).view(-1)
         return out
 
-
-
-class DeepNets1M_dataset(Dataset):
-    def __init__(self, args, split=None, is_imagenet=False, virtual_edges=1, debug=False):
-        self.DeepNets1M_loader = DeepNets1M.loader(split=split,  
-                                 nets_dir=args.data_dir,
-                                 large_images=is_imagenet,
-                                 virtual_edges=virtual_edges,
-                                 arch=args.arch)
-
-        self.random_state = np.random.RandomState(0)
-        self.max_nodes = 600
-        self.dataset = args.dataset
-        self.split = split
-        self.debug = debug
-        self.seed = 0
-        self.graphs_queue = [graphs for graphs in self.DeepNets1M_loader] 
-        self.val_acc_array = self.get_graph_properties()['val_acc'][self.split]
-
-
-    def __len__(self):
-        return len(self.DeepNets1M_loader)
-
-    def _check(self, item):
-        n = item["num_vertices"]
-        ops = item["operations"]
-        adjacency = item["adjacency"]
-        mask = item["mask"]
-        assert np.sum(adjacency) - np.sum(adjacency[:n, :n]) == 0
-        assert np.sum(ops) == n
-        assert np.sum(ops) - np.sum(ops[:n]) == 0
-        assert np.sum(mask) == n and np.sum(mask) - np.sum(mask[:n]) == 0
-
-
-    def get_graph_properties(self):
-        with open('./data/results_%s.json' % self.dataset, 'r') as f:
-            results = json.load(f)
-        properties = {}
-        for prop in ['val_acc', 'val_acc_noise', 'time', 'converge_time']:
-            properties[prop] = {}
-            for split in ['val', 'test']:
-                properties[prop][split] = np.array([r[prop] for r in results[split].values()])
-        
-        return properties
-
-    def get_data_from_graphbatch(self, graphs):
-        data = []
-        for graph in graphs:  # graphbatch has size 1 for eval
-            num_vertices = graph.n_nodes
-            adjacency = graph._Adj
-            adjacency = F.pad(adjacency, (0, self.max_nodes - num_vertices, 0, self.max_nodes - num_vertices)).float()
-            
-            ops_onehot = np.zeros((self.max_nodes, len(PRIMITIVES_DEEPNETS1M)))
-            i = 0
-            for nodes in graph.node_feat: # for ops_onehot change the  graph.node_feat
-                # for n in nodes:
-                    # ops_onehot[i, PRIMITIVES_GHN[n[0]]] = 1
-                ops_onehot[i, nodes[0]] = 1
-                i += 1
-                
-            assert i == num_vertices, (i, num_vertices)
-            
-            operations = torch.from_numpy(ops_onehot).float(),
-            operations = operations[0]  # for some reason, operation is a tuple with len of 1 instead of torch array
-            mask = torch.from_numpy(np.array([i < num_vertices for i in range(self.max_nodes)], dtype=np.float32)).float(),
-            mask = mask[0]
-            
-            data.append([num_vertices, adjacency, operations, mask])
-        return data[0]  # graphbatch has size 1 for val
-
-    def __getitem__(self, index):
-        val_acc = self.val_acc_array[index].astype('float32')
-        graphs = self.graphs_queue[index]
-        num_vertices, adjacency, operations, mask = self.get_data_from_graphbatch(graphs)
-        
-        # print("num_vertices, adjacency, operations, mask", type(num_vertices), type(adjacency), type(operations), type(mask))
-        # >>> <class 'int'> <class 'torch.Tensor'> <class 'torch.Tensor'> <class 'torch.Tensor'>
-
-        result = {
-            "num_vertices": num_vertices, 
-            "adjacency": adjacency,
-            "operations": operations,
-            "mask": mask,
-            "val_acc": val_acc
-        }
-        # result = {
-        #     "num_vertices": graph.n_nodes, # N
-            # "adjacency": F.pad(graph._Adj, (0, self.max_nodes - N, 0, self.max_nodes - N)).float(), # np.pad(data[0], ((0, self.max_nodes - N),(0, self.max_nodes - N))),
-        #     "operations": torch.from_numpy(ops_onehot).float(),
-        #     "mask": torch.from_numpy(np.array([i < N for i in range(self.max_nodes)], dtype=np.float32)).float(),
-        #     "val_acc": self.acc[index]
-        #     # "test_acc": self.acc[index]
-        # }
-        if self.debug:
-            self._check(result)
-        return result
 
 
 class Nb101Dataset(Dataset):
@@ -260,6 +153,7 @@ class Nb101Dataset(Dataset):
         if self.debug:
             self._check(result)
         return result
+
 
 def reset_seed(seed):
     torch.manual_seed(seed)
@@ -380,37 +274,14 @@ def main():
     parser.add_argument("--train_print_freq", default=None, type=int)
     parser.add_argument("--eval_print_freq", default=10, type=int)
     parser.add_argument("--visualize", default=False, action="store_true")
-    
-    # argument for DeepNet1M:
-    parser.add_argument('-d', '--dataset', type=str, default='cifar10', help='image dataset: cifar10/imagenet/PennFudanPed.')
-    parser.add_argument('-D', '--data_dir', type=str, default='./data',
-                    help='where image dataset and DeepNets-1M are stored')
-    
-    mode = 'eval'
-    is_train_net = mode == 'train_net'
-    is_eval = mode == 'eval'
-    parser.add_argument('--arch', type=str,
-                            default='DARTS' if is_train_net else None,
-                            help='one of the architectures: '
-                                 'string for the predefined genotypes such as DARTS; '
-                                 'the architecture index from DeepNets-1M')
-        
     args = parser.parse_args()
 
     reset_seed(args.seed)
 
-    is_imagenet = args.dataset == 'imagenet'
-    virtual_edges = 50  # default values
-    dataset = DeepNets1M_dataset(args, split='val', is_imagenet=is_imagenet, virtual_edges=virtual_edges)
-    dataset_test = DeepNets1M_dataset(args, split='test', is_imagenet=is_imagenet, virtual_edges=virtual_edges)
-    
-    # dataset = Nb101Dataset(split='train')
-    # dataset_test = Nb101Dataset(split='val')
-    
+    dataset = Nb101Dataset(split='train')
+    dataset_test = Nb101Dataset(split='val')
     data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, drop_last=True)
     test_data_loader = DataLoader(dataset_test, batch_size=args.eval_batch_size)
-    
-    
     net = NeuralPredictor(gcn_hidden=args.gcn_hidden)
     net.cuda()
     criterion = nn.MSELoss()
@@ -420,7 +291,7 @@ def main():
     logger = get_logger()
 
     net.train()
-    for epoch in tqdm(range(args.epochs), position=0, leave=True):
+    for epoch in range(args.epochs):
         meters = AverageMeterGroup()
         lr = optimizer.param_groups[0]["lr"]
         for step, batch in enumerate(data_loader):
