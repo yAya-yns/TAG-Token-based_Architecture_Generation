@@ -1,4 +1,4 @@
-# TAG-Token-based_Architecture_Generation
+# TAG: Token-based_Architecture_Generation
 
 [Project Proposal](https://www.overleaf.com/read/kyzwskkjphxr)
 
