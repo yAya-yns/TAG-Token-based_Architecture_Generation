@@ -409,76 +409,83 @@ def main():
         
     args = parser.parse_args()
 
-    
-
+    # seed_list = [123, 321, 222]
+    seed_list = [0, 100, 123, 321, 222]
+    result_list = []
+    for seed in seed_list:
         
-    reset_seed(args.seed)
-    # print("********* torch.seed={}, numpy.seed={}, args.seed={} ********".format(torch.seed(), np.random.get_state()[1][0], args.seed))
-    
-    target_property = 'val_acc'  # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
-    is_imagenet = args.dataset == 'imagenet'
-    virtual_edges = 50  # default values
-    dataset = DeepNets1M_dataset(args, split='val', is_imagenet=is_imagenet, virtual_edges=virtual_edges)
-    dataset_test = DeepNets1M_dataset(args, split='test', is_imagenet=is_imagenet, virtual_edges=virtual_edges)
-    
-    # dataset = Nb101Dataset(split='train')
-    # dataset_test = Nb101Dataset(split='val')
-    
-    data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, drop_last=True)
-    test_data_loader = DataLoader(dataset_test, batch_size=args.eval_batch_size)
-    
-    
-    net = NeuralPredictor(gcn_hidden=args.gcn_hidden)
-    net.cuda()
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.wd)
-    lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs)
+        # reset_seed(args.seed)
+        reset_seed(seed)
+        # print("********* torch.seed={}, numpy.seed={}, args.seed={} ********".format(torch.seed(), np.random.get_state()[1][0], args.seed))
+        
+        target_property = 'converge_time'  # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
+        is_imagenet = args.dataset == 'imagenet'
+        virtual_edges = 50  # default values
+        dataset = DeepNets1M_dataset(args, split='val', is_imagenet=is_imagenet, virtual_edges=virtual_edges)
+        dataset_test = DeepNets1M_dataset(args, split='test', is_imagenet=is_imagenet, virtual_edges=virtual_edges)
+        
+        # dataset = Nb101Dataset(split='train')
+        # dataset_test = Nb101Dataset(split='val')
+        
+        data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, drop_last=True)
+        test_data_loader = DataLoader(dataset_test, batch_size=args.eval_batch_size)
+        
+        
+        net = NeuralPredictor(gcn_hidden=args.gcn_hidden)
+        net.cuda()
+        criterion = nn.MSELoss()
+        optimizer = optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.wd)
+        lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs)
 
-    logger = get_logger()
+        logger = get_logger()
 
-    net.train()
-    
-    for epoch in tqdm(range(args.epochs), position=0, leave=True):
+        net.train()
+        
+        for epoch in tqdm(range(args.epochs), position=0, leave=True):
+            meters = AverageMeterGroup()
+            lr = optimizer.param_groups[0]["lr"]
+            for step, batch in enumerate(data_loader):
+                batch = to_cuda(batch)
+                # target = batch["val_acc"]
+                target = batch[target_property]
+                predict = net(batch)
+                optimizer.zero_grad()
+                loss = criterion(predict, target)
+                loss.backward()
+                optimizer.step()
+                mse = accuracy_mse(predict, target)
+                meters.update({"loss": loss.item(), "mse": mse.item()}, n=target.size(0))
+                if (args.train_print_freq and step % args.train_print_freq == 0) or \
+                        step + 1 == len(data_loader):
+                    logger.info("Epoch [%d/%d] Step [%d/%d] lr = %.3e  %s",
+                                epoch + 1, args.epochs, step + 1, len(data_loader), lr, meters)
+            lr_scheduler.step()
+
+        net.eval()
         meters = AverageMeterGroup()
-        lr = optimizer.param_groups[0]["lr"]
-        for step, batch in enumerate(data_loader):
-            batch = to_cuda(batch)
-            # target = batch["val_acc"]
-            target = batch[target_property]
-            predict = net(batch)
-            optimizer.zero_grad()
-            loss = criterion(predict, target)
-            loss.backward()
-            optimizer.step()
-            mse = accuracy_mse(predict, target)
-            meters.update({"loss": loss.item(), "mse": mse.item()}, n=target.size(0))
-            if (args.train_print_freq and step % args.train_print_freq == 0) or \
-                    step + 1 == len(data_loader):
-                logger.info("Epoch [%d/%d] Step [%d/%d] lr = %.3e  %s",
-                            epoch + 1, args.epochs, step + 1, len(data_loader), lr, meters)
-        lr_scheduler.step()
+        predict_, target_ = [], []
+        with torch.no_grad():
+            for step, batch in enumerate(test_data_loader):
+                batch = to_cuda(batch)
+                # target = batch["val_acc"]
+                target = batch[target_property]
+                predict = net(batch)
+                predict_.append(predict.cpu().numpy())
+                target_.append(target.cpu().numpy())
+                meters.update({"loss": criterion(predict, target).item(),
+                            "mse": accuracy_mse(predict, target).item()}, n=target.size(0))
 
-    net.eval()
-    meters = AverageMeterGroup()
-    predict_, target_ = [], []
-    with torch.no_grad():
-        for step, batch in enumerate(test_data_loader):
-            batch = to_cuda(batch)
-            # target = batch["val_acc"]
-            target = batch[target_property]
-            predict = net(batch)
-            predict_.append(predict.cpu().numpy())
-            target_.append(target.cpu().numpy())
-            meters.update({"loss": criterion(predict, target).item(),
-                        "mse": accuracy_mse(predict, target).item()}, n=target.size(0))
-
-            if (args.eval_print_freq and step % args.eval_print_freq == 0) or \
-                    step % 10 == 0 or step + 1 == len(test_data_loader):
-                logger.info("Evaluation Step [%d/%d]  %s", step + 1, len(test_data_loader), meters)
-    predict_ = np.concatenate(predict_)
-    target_ = np.concatenate(target_)
-    print('%d/%d samples' % (len(predict_), len(target_)))
-    logger.info("Kendalltau: %.6f", kendalltau(predict_, target_)[0])
+                if (args.eval_print_freq and step % args.eval_print_freq == 0) or \
+                        step % 10 == 0 or step + 1 == len(test_data_loader):
+                    logger.info("Evaluation Step [%d/%d]  %s", step + 1, len(test_data_loader), meters)
+        predict_ = np.concatenate(predict_)
+        target_ = np.concatenate(target_)
+        print('%d/%d samples' % (len(predict_), len(target_)))
+        logger.info("Kendalltau: %.6f", kendalltau(predict_, target_)[0])
+        result_list.append(kendalltau(predict_, target_)[0])
+        
+    print("for seed list, the {} results are:".format(len(seed_list)))
+    print(result_list)
 
 
 if __name__ == "__main__":
