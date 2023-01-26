@@ -13,6 +13,7 @@ import logging
 import random
 import sys
 from collections import OrderedDict
+
 # from architectures_loader import ArchitectureLoader
 # from darts.cnn.genotypes import PRIMITIVES, PRIMITIVES_GHN
 from ppuda.deepnets1m.loader import DeepNets1M
@@ -21,6 +22,7 @@ from ppuda.deepnets1m.genotypes import PRIMITIVES_DEEPNETS1M
 import torch.multiprocessing
 from tqdm import tqdm
 torch.multiprocessing.set_sharing_strategy('file_system')
+
 
 def normalize_adj(adj):
     # Row-normalize matrix
@@ -70,8 +72,10 @@ class DirectedGraphConvolution(nn.Module):
 
 
 class NeuralPredictor(nn.Module):
+
     # def __init__(self, initial_hidden=len(PRIMITIVES_GHN) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
     def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), gcn_hidden=144, gcn_layers=3, linear_hidden=128):
+
         super().__init__()
         self.gcn = [DirectedGraphConvolution(initial_hidden if i == 0 else gcn_hidden, gcn_hidden)
                     for i in range(gcn_layers)]
@@ -411,7 +415,7 @@ def main():
 
     
 
-        
+
     reset_seed(args.seed)
     # print("********* torch.seed={}, numpy.seed={}, args.seed={} ********".format(torch.seed(), np.random.get_state()[1][0], args.seed))
     
@@ -426,8 +430,7 @@ def main():
     
     data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, drop_last=True)
     test_data_loader = DataLoader(dataset_test, batch_size=args.eval_batch_size)
-    
-    
+
     net = NeuralPredictor(gcn_hidden=args.gcn_hidden)
     net.cuda()
     criterion = nn.MSELoss()
