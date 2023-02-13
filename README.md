@@ -33,11 +33,22 @@ pip install -r requirements.txt
 Follow the instruction in [Data](#data) and download *DeepNets-1M* and *CIFAR-10*.
 ## Run baseline
 ```
-cd experiments
-python3 neural_predictor.py
+python3 experiments/neural_predictor.py
 ```
 You can also run `neural_predictor_batch_experiment.py` to run the baseline for different random seeds for average performance. 
 
+### Potential Error:
+```
+Traceback (most recent call last):
+  File "/yourpath/to/repo/experiments/neural_predictor.py", line 19, in <module>
+    from ppuda.deepnets1m.loader import DeepNets1M
+ModuleNotFoundError: No module named 'ppuda.deepnets1m'
+```
+
+Solution: 
+```
+export PYTHONPATH="${PYTHONPATH}:/path/to/repo/"
+```
 
 
 # Data: 
