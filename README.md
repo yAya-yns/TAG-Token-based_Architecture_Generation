@@ -16,7 +16,7 @@ For complete background, please refer to the `2. Background` section of the inte
   - Performed performant parameter prediction using *NeurPred* on *DeepNets-1M*, which is the baseline of our project.
 - [Neural Predictor for Neural Architecture Search](https://github.com/ultmaster/neuralpredictor.pytorch)
   - Introduced *NeurPred*, which serves as the fundation of the baseline
--[Pure Transformers are Powerful Graph Learners](https://github.com/jw9730/tokengt)
+- [Pure Transformers are Powerful Graph Learners](https://github.com/jw9730/tokengt)
   - Inspiration of representing graph using token and processed using transformer
 - [SELFIES: Self-Referencing Embedded Strings: A 100% robust molecular string representation](https://github.com/aspuru-guzik-group/selfies)
   - Proof of concepts: token-based graph representation for generative models
