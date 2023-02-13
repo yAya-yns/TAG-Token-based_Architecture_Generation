@@ -1,10 +1,31 @@
 # TAG: Token-based Architecture Generation
 
-[Project Proposal](https://www.overleaf.com/read/kyzwskkjphxr)
-
-
+[Project Interim Report](https://www.overleaf.com/read/fkyjcmypcxkx)
 
 This is a continuing work from the original [PPUDA](https://github.com/facebookresearch/ppuda)
+
+## Getting Started on the Project:
+
+### Background understanding:
+
+For complete background, please refer to the `2. Background` section of the interim report. Core literatures are listed as follow:
+- [Interim Report: 2.2 Graph Representation of Neural Architectures]
+  - Introduced node-based representation for directed acylic computational graph
+- [Parameter Prediction for Unseen Deep Architectures](https://github.com/facebookresearch/ppuda)
+  - Introduced *DeepNets-1M* datasets
+  - Performed performant parameter prediction using *NeurPred* on *DeepNets-1M*, which is the baseline of our project.
+- [Neural Predictor for Neural Architecture Search](https://github.com/ultmaster/neuralpredictor.pytorch)
+  - Introduced *NeurPred*, which serves as the fundation of the baseline
+-[Pure Transformers are Powerful Graph Learners](https://github.com/jw9730/tokengt)
+  - Inspiration of representing graph using token and processed using transformer
+- [SELFIES: Self-Referencing Embedded Strings: A 100% robust molecular string representation](https://github.com/aspuru-guzik-group/selfies)
+  - Proof of concepts: token-based graph representation for generative models
+
+[Link to literature reviews](https://drive.google.com/drive/folders/1YwHyJ2gQEj1ChcLX5uQXrhjhBJzcPndr?usp=share_link)
+
+### Run baseline code:
+- 
+
 
 <hr /> 
 
