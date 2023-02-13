@@ -9,7 +9,7 @@ This is a continuing work from the original [PPUDA](https://github.com/facebookr
 ### Background understanding:
 
 For complete background, please refer to the `2. Background` section of the interim report. Core literatures are listed as follow:
-- [Interim Report: 2.2 Graph Representation of Neural Architectures]
+- [Interim Report: 2.2 Graph Representation of Neural Architectures](https://www.overleaf.com/read/fkyjcmypcxkx)
   - Introduced node-based representation for directed acylic computational graph
 - [Parameter Prediction for Unseen Deep Architectures](https://github.com/facebookresearch/ppuda)
   - Introduced *DeepNets-1M* datasets
