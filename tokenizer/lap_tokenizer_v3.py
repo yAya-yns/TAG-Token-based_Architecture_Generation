@@ -1,10 +1,13 @@
 import h5py
 import numpy as np
 
-# Revised Version 2
-# input:  A - adjacency matrix (NxN), dp - scalar dimension of desire (recommend 3)
-# output: lap_eigvec - laplacian eigen vectors of dimensions N x dp
 def lap_eigen(A, dp):
+    '''    
+    Revised Version 2
+    input:  A - adjacency matrix (NxN), dp - scalar dimension of desire (recommend 3)
+    output: lap_eigvec - laplacian eigen vectors of dimensions N x dp
+    '''
+    
     # Compute Matrix Dimension:
     N = A.shape[0]
 
@@ -31,10 +34,14 @@ def lap_eigen(A, dp):
 
     return lap_eigvec
 
-# input: A - adjacency matrix (NxN), Xv - nodes (Nx3)
-# output: X - token, should be in dimension (N + M) x (3 + 2dp + 4)
-# approach: laplacian eigenvector implementation
+
 def token_construction(A, Xv):
+    '''
+    input: A - adjacency matrix (NxN), Xv - nodes (Nx3)
+    output: X - token, should be in dimension (N + M) x (3 + 2dp + 4)
+    approach: laplacian eigenvector implementation
+    '''
+    
     # Compute Matrix Dimension:
     N = A.shape[0]
 
@@ -72,8 +79,8 @@ def token_construction(A, Xv):
 
     return X
 
-# Test 1: Calculate token for a random graph
-def calculate_token_for_a_random_graph():
+# Test 1: test the tokenizer for a random graph
+def test_tokenizer_for_a_random_graph():
     Atp = np.random.randint(2, size=(5, 5))
     Ntp = np.random.randint(10, size=(5, 3))
     np.fill_diagonal(Atp, 0)
@@ -108,5 +115,5 @@ def test_tokenizer_for_a_graph_in_deepnet1m_val():
     return True
 
 if __name__ == "__main__":
-    calculate_token_for_a_random_graph()  # Test 1
+    test_tokenizer_for_a_random_graph()  # Test 1
     test_tokenizer_for_a_graph_in_deepnet1m_val()  # Test 2
