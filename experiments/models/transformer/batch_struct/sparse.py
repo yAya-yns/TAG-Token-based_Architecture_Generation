@@ -140,7 +140,8 @@ def make_batch_concatenated(node_feature: torch.Tensor, edge_index: torch.LongTe
     idx = idx[None, :].expand(bsize, max(n_nodes))  # [B, N]
     node_index = torch.arange(max(n_nodes), device=device, dtype=torch.long)
     node_index = node_index[None, :, None].expand(bsize, max(n_nodes), 2)  # [B, N, 2]
-    node_num_vec = torch.tensor(n_nodes, device=device)[:, None]  # [B, 1]
+    # node_num_vec = torch.tensor(n_nodes, device=device)[:, None]  # [B, 1]
+    node_num_vec = n_nodes.clone().detach().to(device)[:, None]
     unpacked_node_index = node_index[idx < node_num_vec]  # [N, 2]
     unpacked_node_feature = node_feature  # [sum(n), Dv]
     # unpack edges
@@ -211,11 +212,15 @@ def add_null_token(G: Batch, null_feat: torch.tensor):
     new_n_edges12 = [x + 1 for x in n_edges12]  # number of 1-edges + number of 2-edges
 
     unpack_null_index = torch.zeros(B, 2, dtype=torch.long, device=device)  # [B, 2]
-    unpack_null_index[:, 0] = torch.tensor(n_nodes)
-    unpack_null_index[:, 1] = torch.tensor(n_nodes)
+    # unpack_null_index[:, 0] = torch.tensor(n_nodes)
+    # unpack_null_index[:, 1] = torch.tensor(n_nodes)
+    unpack_null_index[:, 0] = n_nodes.clone().detach()
+    unpack_null_index[:, 1] = n_nodes.clone().detach()
+    
 
     full_index = torch.arange(E + 1, device=device)[None, :].expand(B, E + 1)  # [B, E+1]
-    node_num_vec = torch.tensor(n_nodes, device=device)[:, None]
+    # node_num_vec = torch.tensor(n_nodes, device=device)[:, None]
+    node_num_vec = n_nodes.clone().detach().to(device)[:, None]
     edge_num_vec = torch.tensor(n_edges2, device=device)[:, None]
     null_num_vec = torch.ones(B, device=device)[:, None]
     null_mask = (node_num_vec + edge_num_vec <= full_index) & (full_index < node_num_vec + edge_num_vec + null_num_vec)
