@@ -2,7 +2,8 @@ usefulScript.md
 checkpoint/
 data/*
 !data/figs/
-!data/download.sh
+!data/download_cifar10.sh
+!data/download_deepnets1m.sh
 cifar-10-*
 .idea/
 *.tar
