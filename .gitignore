@@ -4,6 +4,9 @@ data/*
 !data/figs/
 !data/download_cifar10.sh
 !data/download_deepnets1m.sh
+!data/results_cifar10_extended.json
+!data/results_cifar10.json
+!data/results_imagenet.json
 cifar-10-*
 .idea/
 *.tar
