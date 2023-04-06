@@ -40,6 +40,8 @@ class Batch(object):
         assert self.order in (1, 2)
         self.node_mask = get_mask(torch.tensor(n_nodes, dtype=torch.long, device=self.device),
                                   max(n_nodes)) if node_mask is None else node_mask  # [B, N]
+        # self.node_mask = get_mask(n_nodes.clone().detach().long().to(self.device),
+        #                           max(n_nodes)) if node_mask is None else node_mask  # [B, N]
         if self.order == 1:
             self.mask = self.node_mask
         else:

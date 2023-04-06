@@ -84,7 +84,8 @@ class NeuralPredictor(nn.Module):
     # def __init__(self, initial_hidden=len(PRIMITIVES_GHN) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
     # def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), gcn_hidden=144, gcn_layers=3, linear_hidden=128):
     def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), 
-        n_layers=6, dim_hidden=256, dim_qk=256, dim_v=256, dim_ff=256, n_heads=16):
+        # n_layers=6, dim_hidden=256, dim_qk=256, dim_v=256, dim_ff=256, n_heads=16):
+        n_layers=4, dim_hidden=128, dim_qk=128, dim_v=128, dim_ff=128, n_heads=8):
 
         super().__init__()
         # self.gcn = [DirectedGraphConvolution(initial_hidden if i == 0 else gcn_hidden, gcn_hidden)
@@ -110,11 +111,12 @@ class NeuralPredictor(nn.Module):
         # out = self.fc1(out)
         # out = self.dropout(out)
 
+        # adj[adj > 1] = 0  # masking out adj edge cost
         # G.values: [bsize, max(n+e), 2*dim_hidden]
-        print(nodes.shape)
-        token = token_construction_batch(adj, nodes)
-        print(token.shape)
-        print(out.shape)
+        # print(nodes.shape)
+        token = token_construction_batch(adj, nodes).to(adj.get_device())
+        # print(token.shape)
+        # print(out.shape)
         numv = [600 + max_edges]*(len(numv))
         values = self.fc1(token)
         G = Batch(indices=None, values=values, n_nodes=numv, n_edges=None)
@@ -350,9 +352,9 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--gcn_hidden", type=int, default=256) # originally 144
     parser.add_argument("--seed", type=int, default=222)
-    parser.add_argument("--train_batch_size", default=20, type=int)
-    parser.add_argument("--eval_batch_size", default=100, type=int)  # original 1000
-    parser.add_argument("--epochs", default=150, type=int)
+    parser.add_argument("--train_batch_size", default=3, type=int)
+    parser.add_argument("--eval_batch_size", default=10, type=int)  # original 1000
+    parser.add_argument("--epochs", default=100, type=int)
     parser.add_argument("--lr", "--learning_rate", default=1e-4, type=float)
     parser.add_argument("--wd", "--weight_decay", default=1e-3, type=float)
     parser.add_argument("--train_print_freq", default=None, type=int)
@@ -400,7 +402,7 @@ def main():
     logger = get_logger()
 
     net.train()
-    
+    print("Training for Target_property = ", target_property)
     for epoch in tqdm(range(args.epochs), position=0, leave=True):
         meters = AverageMeterGroup()
         lr = optimizer.param_groups[0]["lr"]
@@ -442,7 +444,7 @@ def main():
     target_ = np.concatenate(target_)
     print('%d/%d samples' % (len(predict_), len(target_)))
     logger.info("Kendalltau: %.6f", kendalltau(predict_, target_)[0])
-
+    print("Training finished for Target_property = ", target_property)
 
 if __name__ == "__main__":
     main()

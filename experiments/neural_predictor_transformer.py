@@ -23,6 +23,9 @@ import torch.multiprocessing
 from tqdm import tqdm
 torch.multiprocessing.set_sharing_strategy('file_system')
 
+from models.transformer.encoder import Encoder
+from models.transformer.batch_struct.sparse import Batch, make_batch_concatenated, add_null_token
+
 
 def normalize_adj(adj):
     # Row-normalize matrix
@@ -74,27 +77,80 @@ class DirectedGraphConvolution(nn.Module):
 class NeuralPredictor(nn.Module):
 
     # def __init__(self, initial_hidden=len(PRIMITIVES_GHN) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
-    def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), gcn_hidden=144, gcn_layers=3, linear_hidden=128):
+    # def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), gcn_hidden=144, gcn_layers=3, linear_hidden=128):
+    def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), 
+        n_layers=2, dim_hidden=128, dim_qk=128, dim_v=128, dim_ff=128, n_heads=16):
 
         super().__init__()
-        self.gcn = [DirectedGraphConvolution(initial_hidden if i == 0 else gcn_hidden, gcn_hidden)
-                    for i in range(gcn_layers)]
-        self.gcn = nn.ModuleList(self.gcn)
-        self.dropout = nn.Dropout(0.1)
-        self.fc1 = nn.Linear(gcn_hidden, linear_hidden, bias=False)
-        self.fc2 = nn.Linear(linear_hidden, 1, bias=False)
+        # self.gcn = [DirectedGraphConvolution(initial_hidden if i == 0 else gcn_hidden, gcn_hidden)
+        #             for i in range(gcn_layers)]
+        # self.gcn = nn.ModuleList(self.gcn)
+        # self.dropout = nn.Dropout(0.1)
+        # self.fc1 = nn.Linear(gcn_hidden, linear_hidden, bias=False)
+        
+        self.null_token = nn.Embedding(1, dim_hidden)
+        self.fc1 = nn.Linear(initial_hidden, dim_hidden)
+        self.encoder = Encoder(n_layers=n_layers, dim_in=dim_hidden, dim_out=dim_hidden, dim_hidden=dim_hidden, dim_qk=dim_qk, dim_v=dim_v, dim_ff=dim_ff, n_heads=n_heads)
+        self.fc2 = nn.Linear(dim_hidden, 1, bias=False)
 
     def forward(self, inputs):
         numv, adj, out = inputs["num_vertices"], inputs["adjacency"], inputs["operations"]
-        gs = adj.size(1)  # graph node number
-        adj_with_diag = normalize_adj(adj + torch.eye(gs, device=adj.device))  # assuming diagonal is not 1
-        for layer in self.gcn:
-            out = layer(out, adj_with_diag)  # passes into the forward of DirectedGraphConvolution
-        out = graph_pooling(out, numv)
-        out = self.fc1(out)
-        out = self.dropout(out)
-        out = self.fc2(out).view(-1)
+
+        adj[adj > 1] = 0
+        # print(torch.unique(adj))
+        # xxx
+
+        # numv: tensor([ 76, 186, 170, 131, 358, 211, 142, 150, 142, 321], device='cuda:0')
+        # numv.shape, adj.shape, out.shape: torch.Size([10]) torch.Size([10, 600, 600]) torch.Size([10, 600, 15])
+        # out = out[:,:500,:]  # to test the 600 for numv  # torch.Size([10, 500, 15])
+        
+        # gs = adj.size(1)  # graph node number
+        # adj_with_diag = normalize_adj(adj + torch.eye(gs, device=adj.device))  # assuming diagonal is not 1
+        # for layer in self.gcn:
+        #     out = layer(out, adj_with_diag)  # passes into the forward of DirectedGraphConvolution
+        # out = graph_pooling(out, numv)
+        # out = self.fc1(out)
+        # out = self.dropout(out)
+
+        # G.values: [bsize, max(n+e), 2*dim_hidden]
+        # numv = [600]*len(numv)
+        values = self.fc1(out)
+        # G = Batch(indices=None, values=values, n_nodes=numv, n_edges=None)
+        # _, out = self.encoder(G)
+        # out = self.fc2(torch.mean(out.values, dim=1)).view(-1)
+        
+        ##########
+        """
+        :param node_feature: Tensor([sum(n), Dv])
+        :param edge_index: LongTensor([2, sum(e)])
+        :param edge_feature: Tensor([sum(e), De])
+        :param n_nodes: list
+        :param n_edges: list
+        :parem null_params: dict
+        """
+
+        # node_num = batched_data.node_num
+        node_feature = torch.cat([values[a, :numv[a]] for a in range(len(numv))])  # sparse node_feat
+        edge_index = torch.cat([torch.nonzero(adj[b]) for b in range(len(adj))]).t()
+        edge_feature = torch.ones(edge_index.t().shape[0], node_feature.size(-1)).to(node_feature)  # since we use sparse representation
+        node_num = numv
+        edge_num = [len(torch.nonzero(adj[c])) for c in range(len(adj))]
+
+
+        # null_token_feature = self.null_token.weight  # [1, dim_hidden]
+        G = make_batch_concatenated(node_feature, edge_index, edge_feature, node_num, edge_num,
+                                    null_params={'use_null_node': False, 'null_feature': None})
+        # G.values: [B, E, dim]; G.indices[B, E, 2];   
+        # bsize, E = G.mask.shape
+
+        null_token_feature = self.null_token.weight  # [1, dim_hidden]
+        G_null = add_null_token(G, null_token_feature)
+
+        _, out = self.encoder(G_null)
+        out = self.fc2(torch.mean(out.values, dim=1)).view(-1)
+
         return out
+
 
 
 
@@ -386,11 +442,11 @@ def accuracy_mse(predict, target, scale=100.):
 def main():
     # valid_splits = ["172", "334", "860", "91-172", "91-334", "91-860", "denoise-91", "denoise-80", "all"]
     parser = ArgumentParser()
-    parser.add_argument("--gcn_hidden", type=int, default=144)
+    parser.add_argument("--gcn_hidden", type=int, default=256) # originally 144
     parser.add_argument("--seed", type=int, default=222)
-    parser.add_argument("--train_batch_size", default=10, type=int)
-    parser.add_argument("--eval_batch_size", default=1000, type=int)
-    parser.add_argument("--epochs", default=300, type=int)
+    parser.add_argument("--train_batch_size", default=30, type=int) # originally 10
+    parser.add_argument("--eval_batch_size", default=50, type=int)  # original 1000
+    parser.add_argument("--epochs", default=150, type=int)
     parser.add_argument("--lr", "--learning_rate", default=1e-4, type=float)
     parser.add_argument("--wd", "--weight_decay", default=1e-3, type=float)
     parser.add_argument("--train_print_freq", default=None, type=int)
@@ -402,6 +458,7 @@ def main():
     parser.add_argument('-D', '--data_dir', type=str, default='./data',
                     help='where image dataset and DeepNets-1M are stored')
     
+    torch.cuda.empty_cache()
     mode = 'eval'
     is_train_net = mode == 'train_net'
     is_eval = mode == 'eval'
@@ -428,10 +485,11 @@ def main():
     # dataset = Nb101Dataset(split='train')
     # dataset_test = Nb101Dataset(split='val')
     
-    data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, drop_last=True)
     test_data_loader = DataLoader(dataset_test, batch_size=args.eval_batch_size)
+    data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, drop_last=True)
+    
 
-    net = NeuralPredictor(gcn_hidden=args.gcn_hidden)
+    net = NeuralPredictor(dim_hidden=args.gcn_hidden)
     net.cuda()
     criterion = nn.MSELoss()
     optimizer = optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.wd)
@@ -446,11 +504,11 @@ def main():
         lr = optimizer.param_groups[0]["lr"]
         for step, batch in enumerate(data_loader):
             batch = to_cuda(batch)
-            # target = batch["val_acc"]
             target = batch[target_property]
             predict = net(batch)
             optimizer.zero_grad()
             loss = criterion(predict, target)
+
             loss.backward()
             optimizer.step()
             mse = accuracy_mse(predict, target)

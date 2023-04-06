@@ -79,7 +79,7 @@ class NeuralPredictor(nn.Module):
     # def __init__(self, initial_hidden=len(PRIMITIVES_GHN) + 2, gcn_hidden=144, gcn_layers=3, linear_hidden=128):
     # def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), gcn_hidden=144, gcn_layers=3, linear_hidden=128):
     def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), 
-        n_layers=6, dim_hidden=256, dim_qk=256, dim_v=256, dim_ff=256, n_heads=16):
+        n_layers=12, dim_hidden=256, dim_qk=256, dim_v=256, dim_ff=256, n_heads=16):
 
         super().__init__()
         # self.gcn = [DirectedGraphConvolution(initial_hidden if i == 0 else gcn_hidden, gcn_hidden)
@@ -104,7 +104,7 @@ class NeuralPredictor(nn.Module):
         # out = graph_pooling(out, numv)
         # out = self.fc1(out)
         # out = self.dropout(out)
-        # adj[adj > 1] = 0  # shouldn't matter to v1 since it doesn't use adj
+        # adj[adj > 1] = 0  # temp  to be deleted for V1
 
         # G.values: [bsize, max(n+e), 2*dim_hidden]
         numv = [600]*len(numv)
@@ -407,10 +407,10 @@ def main():
     # valid_splits = ["172", "334", "860", "91-172", "91-334", "91-860", "denoise-91", "denoise-80", "all"]
     parser = ArgumentParser()
     parser.add_argument("--gcn_hidden", type=int, default=256) # originally 144
-    parser.add_argument("--seed", type=int, default=123)  # originally 222 for v1
-    parser.add_argument("--train_batch_size", default=30, type=int)
+    parser.add_argument("--seed", type=int, default=222)  # originally 222 for v1
+    parser.add_argument("--train_batch_size", default=40, type=int)
     parser.add_argument("--eval_batch_size", default=100, type=int)  # original 1000
-    parser.add_argument("--epochs", default=150, type=int)
+    parser.add_argument("--epochs", default=300, type=int)
     parser.add_argument("--lr", "--learning_rate", default=1e-4, type=float)
     parser.add_argument("--wd", "--weight_decay", default=1e-3, type=float)
     parser.add_argument("--train_print_freq", default=None, type=int)

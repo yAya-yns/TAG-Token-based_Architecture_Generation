@@ -18,6 +18,8 @@ class ScaledDotProductAttention(nn.Module):
         # mask: = (bsize, 1, 1, |E|)
 
         dim_qk = Q.size(-1)
+        # print("Q.shape, K.shape", Q.shape, K.shape)
+        # Q.shape, K.shape torch.Size([1, 16, 10377, 128]) torch.Size([1, 16, 10377, 128])
         attn_score = torch.matmul(Q, K.transpose(2, 3)) / math.sqrt(dim_qk)  # tensor(bsize, nheads, |E|, |E|)
         attn_score = attn_score.masked_fill(~mask, -1e9)  # tensor(bsize, nheads, |E|, |E|)
         attn_score = F.softmax(attn_score, dim=-1)  # tensor(bsize, nheads, |E|, |E|)
