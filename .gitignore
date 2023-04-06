@@ -1,5 +1,6 @@
 usefulScript.md
 checkpoint/
+results/
 data/*
 !data/figs/
 !data/download_cifar10.sh

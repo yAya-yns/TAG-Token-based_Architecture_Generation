@@ -452,6 +452,7 @@ def main():
     parser.add_argument("--train_print_freq", default=None, type=int)
     parser.add_argument("--eval_print_freq", default=10, type=int)
     parser.add_argument("--visualize", default=False, action="store_true")
+    parser.add_argument("--target_property", default='val_acc', type=str) # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
     
     # argument for DeepNet1M:
     parser.add_argument('-d', '--dataset', type=str, default='cifar10', help='image dataset: cifar10/imagenet/PennFudanPed.')
@@ -476,7 +477,8 @@ def main():
     reset_seed(args.seed)
     # print("********* torch.seed={}, numpy.seed={}, args.seed={} ********".format(torch.seed(), np.random.get_state()[1][0], args.seed))
     
-    target_property = 'val_acc'  # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
+    # target_property = 'val_acc'  # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
+    target_property = args.target_property  # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
     is_imagenet = args.dataset == 'imagenet'
     virtual_edges = 50  # default values
     dataset = DeepNets1M_dataset(args, split='val', is_imagenet=is_imagenet, virtual_edges=virtual_edges)
