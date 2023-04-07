@@ -408,7 +408,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--gcn_hidden", type=int, default=256) # originally 144
     parser.add_argument("--seed", type=int, default=222)  # originally 222 for v1
-    parser.add_argument("--train_batch_size", default=40, type=int)
+    parser.add_argument("--train_batch_size", default=30, type=int)  # bs=40 for a40, bs=20 for rtx6000
     parser.add_argument("--eval_batch_size", default=100, type=int)  # original 1000
     parser.add_argument("--epochs", default=300, type=int)
     parser.add_argument("--lr", "--learning_rate", default=1e-4, type=float)
@@ -462,7 +462,9 @@ def main():
     logger = get_logger()
 
     net.train()
-    print("Training for Target_property = ", target_property)
+    print("Training for: ")
+    print("    Target_property: ", target_property)
+    print("    Batch_size: ", args.train_batch_size)
     for epoch in tqdm(range(args.epochs), position=0, leave=True):
         meters = AverageMeterGroup()
         lr = optimizer.param_groups[0]["lr"]
@@ -504,8 +506,9 @@ def main():
     target_ = np.concatenate(target_)
     print('%d/%d samples' % (len(predict_), len(target_)))
     logger.info("Kendalltau: %.6f", kendalltau(predict_, target_)[0])
-    print("Training finished for Target_property = ", target_property)
-
+    print("Training finished for: ")
+    print("    Target_property: ", target_property)
+    print("    Batch_size: ", args.train_batch_size)
 
 if __name__ == "__main__":
     main()

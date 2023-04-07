@@ -29,7 +29,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 from models.transformer.encoder import Encoder
 from models.transformer.batch_struct.sparse import Batch
 
-from tokenizer.lap_tokenizer_v4 import lap_eigen, token_construction, token_construction_batch, max_edges
+from tokenizer.lap_tokenizer_v5 import lap_eigen, token_construction, token_construction_batch, max_edges
 
 
 def normalize_adj(adj):
@@ -99,6 +99,9 @@ class NeuralPredictor(nn.Module):
 
     def forward(self, inputs):
         numv, adj, out, nodes = inputs["num_vertices"], inputs["adjacency"], inputs["operations"], inputs["nodes"]
+        # inputs["adjacency"] (BXNxN), 
+        # inputs["operations"] (BXNx15), 
+        # inputs["nodes"](BXNX1)
         # numv: tensor([ 76, 186, 170, 131, 358, 211, 142, 150, 142, 321], device='cuda:0')
         # numv.shape, adj.shape, out.shape: torch.Size([10]) torch.Size([10, 600, 600]) torch.Size([10, 600, 15])
         # out = out[:,:500,:]  # to test the 600 for numv  # torch.Size([10, 500, 15])
@@ -111,7 +114,7 @@ class NeuralPredictor(nn.Module):
         # out = self.fc1(out)
         # out = self.dropout(out)
 
-        # adj[adj > 1] = 0  # masking out adj edge cost
+        adj[adj > 1] = 0  # masking out adj edge cost
         # G.values: [bsize, max(n+e), 2*dim_hidden]
         # print(nodes.shape)
         token = token_construction_batch(adj, nodes).to(adj.get_device())
@@ -352,7 +355,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--gcn_hidden", type=int, default=256) # originally 144
     parser.add_argument("--seed", type=int, default=222)
-    parser.add_argument("--train_batch_size", default=3, type=int)
+    parser.add_argument("--train_batch_size", default=12, type=int)
     parser.add_argument("--eval_batch_size", default=10, type=int)  # original 1000
     parser.add_argument("--epochs", default=100, type=int)
     parser.add_argument("--lr", "--learning_rate", default=1e-4, type=float)
@@ -360,6 +363,7 @@ def main():
     parser.add_argument("--train_print_freq", default=None, type=int)
     parser.add_argument("--eval_print_freq", default=10, type=int)
     parser.add_argument("--visualize", default=False, action="store_true")
+    parser.add_argument("--target_property", default='val_acc', type=str) # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
     
     # argument for DeepNet1M:
     parser.add_argument('-d', '--dataset', type=str, default='cifar10', help='image dataset: cifar10/imagenet/PennFudanPed.')
@@ -383,7 +387,8 @@ def main():
     reset_seed(args.seed)
     # print("********* torch.seed={}, numpy.seed={}, args.seed={} ********".format(torch.seed(), np.random.get_state()[1][0], args.seed))
     
-    target_property = 'val_acc'  # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
+    # target_property = 'val_acc'  # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
+    target_property = args.target_property  # one of ['val_acc', 'val_acc_noise', 'time', 'converge_time']
     is_imagenet = args.dataset == 'imagenet'
     virtual_edges = 50  # default values
     dataset = DeepNets1M_dataset(args, split='val', is_imagenet=is_imagenet, virtual_edges=virtual_edges)

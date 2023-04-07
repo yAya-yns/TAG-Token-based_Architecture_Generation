@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 import torch
 
-max_edges = 3000
+max_edges = 1000
 
 def lap_eigen(A, dp):  # expecting a sparse matrix, so it reduce the size
     '''    
@@ -20,16 +20,16 @@ def lap_eigen(A, dp):  # expecting a sparse matrix, so it reduce the size
     N = A.shape[0]
 
     # Compute Degree Matrix:
-    D = np.diag(np.sum(A, axis=1))
+    D = torch.diag(torch.sum(A, axis=1))
 
     # Compute normalized Laplacian matrix L
     #D_sqrt_inv = np.sqrt(np.linalg.inv(D))
-    D_sqrt_inv = np.sqrt(np.linalg.pinv(D))
-    L = np.identity(A.shape[0]) - np.dot(np.dot(D_sqrt_inv, A), D_sqrt_inv)
+    D_sqrt_inv = torch.sqrt(torch.linalg.pinv(D))
+    L = torch.eye(A.shape[0]).to(A.device) - torch.matmul(torch.matmul(D_sqrt_inv, A), D_sqrt_inv)
 
     # Perform eigendecomposition of L
-    eigvals, eigvecs = np.linalg.eig(L)
-    sorted_indices = eigvals.argsort()
+    eigvals, eigvecs = torch.linalg.eig(L)
+    sorted_indices = torch.real(eigvals).argsort()
     eigvals = eigvals[sorted_indices]
     eigvecs = eigvecs[:, sorted_indices]
 
@@ -63,7 +63,7 @@ def token_construction(A, Xv, dp=3):
     for pair in node_pairs:
         row = [A[pair[0], pair[1]]]
         Xe.append(row)
-    Xe = np.array(Xe)
+    Xe = torch.tensor(Xe).to(A.device)
 
     # Construct node identifier matrix P
     #print(A)
@@ -71,28 +71,42 @@ def token_construction(A, Xv, dp=3):
 
     # Augment P's and E's into X
     # Ev/Ee: type identifiers for nodes and edges
-    Ev = []  # identifier: N x 2, where [0,1] -> Node and [1,0] -> Edge 
+    Ev = []  
+    '''
+    identifier: N x 4,
+        for indice 0 and 1, [0, 1] -> Node and [1, 0] -> Edge 
+        for indice 2 and 3, 
+            nodes always have [-1, -1], 
+            Edge is [u, v], where u is the index (identifier) of node 1, v is the index of node 2
+    '''
+    
     for i in range(0, N, 1):
         Ev.append([1, 0, -1, -1])
-    Ev = np.array(Ev)
-    new_Xv = np.hstack((Xv, P, P, Ev))  # N x (1 + 3 + 3 + 2)
+    Ev = torch.tensor(Ev).to(A.device)
+    new_Xv = torch.hstack((Xv, P, P, Ev))  # N x (1 + 3 + 3 + 4)
 
     new_Xe = []
     for i in range(0, Xe.shape[0], 1):
         u, v = node_pairs[i]
-        new_Xe.append(np.hstack((Xe[i], P[u], P[v], np.array([0, 1, u, v]))))
-    new_Xe = np.array(new_Xe)
+        new_Xe.append(torch.hstack((Xe[i], P[u], P[v], torch.tensor([0, 1, u, v]).to(A.device))))
+    new_Xe = torch.stack(new_Xe)
 
     # Concat Xv and Xe vertically
-    X = np.vstack((new_Xv, new_Xe))
+    X = torch.vstack((new_Xv, new_Xe))
 
     padding = max_edges - len(node_pairs)
 
     if padding > 0:  # zoom padding
-        padded_X = np.pad(X, [(0, padding), (0, 0)], mode='constant')
+        # padded_X = torch.pad(X, [(0, padding), (0, 0)], mode='constant')
+        padded_X = torch.nn.functional.pad(X, pad=(0, 0, padding, 0), mode='constant', value=0)
         #print(padded_X.shape)
     else:  # cropping out the additional edge. If the max_edge is set correctly, this shouldn't happen
+        print("hitting else: Max_edge is not long enough")
         padded_X = X[:(max_edges + N), :]
+        
+
+    # print("padded_X.shape", padded_X.shape)
+    # print("new_Xv.shape, new_Xe.shape", new_Xv.shape, new_Xe.shape)
 
     return padded_X
 
@@ -100,8 +114,9 @@ def token_construction_batch(As, Xvs):
     N = As.shape[0]
     everything = []
     for i in range(0, N, 1):
-        everything.append(np.real(token_construction(As[i].cpu().numpy(), Xvs[i].cpu().numpy())).astype(np.float32))
-    return torch.tensor(np.stack(everything))
+        # everything.append(np.real(token_construction(As[i].cpu().numpy(), Xvs[i].cpu().numpy())).astype(np.float32))
+        everything.append(torch.real(token_construction(As[i], Xvs[i])).to(dtype=torch.float32))
+    return torch.stack(everything)
 
 # Test 1: test the tokenizer for a random graph
 def test_tokenizer_for_a_random_graph():
