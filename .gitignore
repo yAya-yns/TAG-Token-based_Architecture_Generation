@@ -18,3 +18,4 @@ cifar-10-*
 pip-wheel-metadata/
 __pycache__/
 *egg-info/
+slurm*
