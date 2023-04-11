@@ -85,7 +85,7 @@ class NeuralPredictor(nn.Module):
     # def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), gcn_hidden=144, gcn_layers=3, linear_hidden=128):
     def __init__(self, initial_hidden=len(PRIMITIVES_DEEPNETS1M), 
         # n_layers=6, dim_hidden=256, dim_qk=256, dim_v=256, dim_ff=256, n_heads=16):
-        n_layers=4, dim_hidden=128, dim_qk=128, dim_v=128, dim_ff=128, n_heads=8):
+        n_layers=12, dim_hidden=128, dim_qk=128, dim_v=128, dim_ff=128, n_heads=16):
 
         super().__init__()
         # self.gcn = [DirectedGraphConvolution(initial_hidden if i == 0 else gcn_hidden, gcn_hidden)
@@ -355,7 +355,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--gcn_hidden", type=int, default=256) # originally 144
     parser.add_argument("--seed", type=int, default=222)
-    parser.add_argument("--train_batch_size", default=12, type=int)
+    parser.add_argument("--train_batch_size", default=6, type=int)
     parser.add_argument("--eval_batch_size", default=10, type=int)  # original 1000
     parser.add_argument("--epochs", default=30, type=int)
     parser.add_argument("--lr", "--learning_rate", default=1e-4, type=float)

@@ -402,9 +402,9 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--gcn_hidden", type=int, default=256) # originally 144
     parser.add_argument("--seed", type=int, default=123)  # originally 222 for v1
-    parser.add_argument("--train_batch_size", default=30, type=int)  # 30 for rtx6000, 10 for t4v2
+    parser.add_argument("--train_batch_size", default=40, type=int)  # 30 for rtx6000, 10 for t4v2
     parser.add_argument("--eval_batch_size", default=100, type=int)  # original 1000
-    parser.add_argument("--epochs", default=150, type=int)
+    parser.add_argument("--epochs", default=30, type=int)
     parser.add_argument("--lr", "--learning_rate", default=1e-4, type=float)
     parser.add_argument("--wd", "--weight_decay", default=1e-3, type=float)
     parser.add_argument("--train_print_freq", default=None, type=int)

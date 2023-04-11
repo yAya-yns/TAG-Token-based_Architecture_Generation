@@ -29,7 +29,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 from models.transformer.encoder import Encoder
 from models.transformer.batch_struct.sparse import Batch
 
-from tokenizer.lap_tokenizer_v5 import lap_eigen, token_construction, token_construction_batch, max_edges
+from tokenizer.lap_tokenizer_v4 import lap_eigen, token_construction, token_construction_batch, max_edges
 
 
 def normalize_adj(adj):
@@ -355,7 +355,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--gcn_hidden", type=int, default=256) # originally 144
     parser.add_argument("--seed", type=int, default=222)
-    parser.add_argument("--train_batch_size", default=12, type=int)
+    parser.add_argument("--train_batch_size", default=6, type=int)
     parser.add_argument("--eval_batch_size", default=10, type=int)  # original 1000
     parser.add_argument("--epochs", default=30, type=int)
     parser.add_argument("--lr", "--learning_rate", default=1e-4, type=float)
