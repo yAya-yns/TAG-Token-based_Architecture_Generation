@@ -1,4 +1,4 @@
-# 🥧TART: Token-based ARchitecture Transformer for Neural Network performance prediction
+# <img src="tart.png" alt="this is a tart" width="50" > TART: Token-based ARchitecture Transformer for Neural Network performance prediction
 
 [Project Interim Report](https://www.overleaf.com/read/fkyjcmypcxkx)
 
