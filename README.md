@@ -1,4 +1,4 @@
-# TAG: Token-based Architecture Generation
+# TART: Token-based ARchitecture Transformer for Neural Network performance prediction
 
 [Project Interim Report](https://www.overleaf.com/read/fkyjcmypcxkx)
 
