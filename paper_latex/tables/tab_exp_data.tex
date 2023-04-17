@@ -1,0 +1,31 @@
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+\begin{table}[]
+\caption{Kendall-Tau correlation between predicted performance and Measured performance on CIFAR-10. Each measurement is calculated by averaging 5 trials with different random seeds. Due to the computational resources limit, we are not able to train more than 30 epochs for TART. Thus, we have also train a 30 epoch pure-Transformer to compare the effects of the tokenizer}
+\label{tab:exp_data}
+
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+\multicolumn{1}{c}{\textbf{Methods}} &
+  \textbf{n\_layer} &
+  \textbf{\begin{tabular}[c]{@{}c@{}}\# of \\ Epoch\end{tabular}} &
+  \textbf{\begin{tabular}[c]{@{}c@{}}Use edge\\ features\end{tabular}} &
+  \multicolumn{4}{c}{\textbf{Kendall-Tau correlation}} \\
+\multicolumn{1}{c}{\textbf{}} &
+  \textbf{} &
+  \textbf{} &
+  \textbf{} &
+  \begin{tabular}[c]{@{}c@{}}Clean image\\ accuracy\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}Noisy image\\ accuracy\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}Inference\\ speed\end{tabular} &
+  \begin{tabular}[c]{@{}c@{}}Convergence\\ speed\end{tabular} \\ \midrule
+Neural Predictor                                                                    & N/A & 300 & True  & 0.482 & 0.451 & 0.695 & 0.395 \\ \midrule
+pure-Transformer                                                                    & 6   & 150 & False & 0.494 & 0.458 & 0.911 & 0.494 \\
+pure-Transformer                                                                    & 6   & 300 & False & 0.515 & 0.471 & 0.912 & 0.515 \\
+pure-Transformer                                                                    & 12  & 300 & False & 0.544 & 0.463 & 0.913 & 0.544 \\ \midrule
+pure-Transformer                                                                    & 6   & 30  & False & 0.210 & 0.137 & 0.893 & 0.210 \\
+\begin{tabular}[c]{@{}l@{}}Tokenized Architecture\\ Transformer (TART)\end{tabular} & 6   & 30  & True  & 0.266 & 0.307 & 0.885 & 0.266 \\ \bottomrule
+\end{tabular}
+}
+\end{table}
